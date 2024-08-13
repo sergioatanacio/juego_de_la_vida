@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Juego de la Vida de Conway Interactivo</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+        }
+        canvas {
+            border: 1px solid #000;
+            margin: 20px 0;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Juego de la Vida de Conway</h1>
+    <div class="controls">
+        <button id="playButton">Iniciar</button>
+        <label for="updateRate">Actualizaciones por segundo:</label>
+        <input type="number" id="updateRate" value="10" min="1" max="60">
+    </div>
+    <canvas id="gameCanvas" width="600" height="400"></canvas>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const playButton = document.getElementById('playButton');
+        const updateRateInput = document.getElementById('updateRate');
+        
+        const CELL_SIZE = 5;
+        const COLS = canvas.width / CELL_SIZE;
+        const ROWS = canvas.height / CELL_SIZE;
+        
+        let grid = createGrid();
+        let isRunning = false;
+        let intervalId = null;
+
+        function createGrid() {
+            return new Array(COLS).fill(null)
+                .map(() => new Array(ROWS).fill(false));
+        }
+
+        function drawGrid() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let i = 0; i < COLS; i++) {
+                for (let j = 0; j < ROWS; j++) {
+                    if (grid[i][j]) {
+                        ctx.fillStyle = 'black';
+                        ctx.fillRect(i * CELL_SIZE, j * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                    }
+                }
+            }
+        }
+
+        function countNeighbors(x, y) {
+            let count = 0;
+            for (let i = -1; i <= 1; i++) {
+                for (let j = -1; j <= 1; j++) {
+                    if (i === 0 && j === 0) continue;
+                    const col = (x + i + COLS) % COLS;
+                    const row = (y + j + ROWS) % ROWS;
+                    count += grid[col][row] ? 1 : 0;
+                }
+            }
+            return count;
+        }
+
+        function updateGrid() {
+            const newGrid = createGrid();
+            for (let i = 0; i < COLS; i++) {
+                for (let j = 0; j < ROWS; j++) {
+                    const neighbors = countNeighbors(i, j);
+                    if (grid[i][j]) {
+                        newGrid[i][j] = neighbors === 2 || neighbors === 3;
+                    } else {
+                        newGrid[i][j] = neighbors === 3;
+                    }
+                }
+            }
+            grid = newGrid;
+        }
+
+        function gameLoop() {
+            updateGrid();
+            drawGrid();
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            if (isRunning) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.floor((e.clientX - rect.left) / CELL_SIZE);
+            const y = Math.floor((e.clientY - rect.top) / CELL_SIZE);
+            grid[x][y] = !grid[x][y];
+            drawGrid();
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (isRunning || e.buttons !== 1) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.floor((e.clientX - rect.left) / CELL_SIZE);
+            const y = Math.floor((e.clientY - rect.top) / CELL_SIZE);
+            grid[x][y] = true;
+            drawGrid();
+        });
+
+        playButton.addEventListener('click', () => {
+            if (isRunning) {
+                clearInterval(intervalId);
+                playButton.textContent = 'Iniciar';
+                isRunning = false;
+            } else {
+                const updateRate = parseInt(updateRateInput.value);
+                intervalId = setInterval(gameLoop, 1000 / updateRate);
+                playButton.textContent = 'Detener';
+                isRunning = true;
+            }
+        });
+
+        updateRateInput.addEventListener('change', () => {
+            if (isRunning) {
+                clearInterval(intervalId);
+                const updateRate = parseInt(updateRateInput.value);
+                intervalId = setInterval(gameLoop, 1000 / updateRate);
+            }
+        });
+
+        drawGrid();
+    </script>
+</body>
+</html>
